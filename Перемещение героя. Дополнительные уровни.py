@@ -44,6 +44,9 @@ def start_screen():
 def load_level(filename):
     filename = "data/" + filename
     # читаем уровень, убирая символы перевода строки
+    if not os.path.isfile(filename):
+        print(f"Файл с изображением '{filename}' не найден")
+        sys.exit()
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
 
