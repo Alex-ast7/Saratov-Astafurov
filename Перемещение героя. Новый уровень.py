@@ -67,33 +67,6 @@ def load_image(name, colorkey=None):
     return image
 
 
-def move(hero, movement):
-    x, y = hero.pos
-    global level_x
-    global level_y
-    print(level_map[x][y - 1])
-    print(level_map[x][y + 1])
-    print(level_map[x - 1][y])
-    print(level_map[x][y + 1])
-    print()
-    if movement == "up":
-        if y > 0 and (level_map[y - 1][x] == "." or level_map[y - 1][x] ==
-                      "@"):
-            hero.move(x, y - 1)
-    elif movement == "down":
-        if y < level_y - 1 and (level_map[y + 1][x] == "." or
-                                level_map[y + 1][x] == "@"):
-            hero.move(x, y + 1)
-    elif movement == "left":
-        if x > 0 and (level_map[y][x - 1] == "." or level_map[y][x - 1] ==
-                      "@"):
-            hero.move(x - 1, y)
-    elif movement == "right":
-        if x < level_x - 1 and (level_map[y][x + 1] == "." or
-                                level_map[y][x + 1] == "@"):
-            hero.move(x + 1, y)
-
-
 def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
@@ -105,30 +78,102 @@ def generate_level(level):
             elif level[y][x] == '@':
                 Tile('empty', x, y)
                 new_player = Player(x, y)
+                s = list(level[y])
+                s[x] = '.'
+                s = ''.join(s)
+                level[y] = s
     # вернем игрока, а также размер поля в клетках
-    return new_player, x, y
+    return new_player, x, y, level
+
+
+# def move(hero, movement):
+#     x, y = hero.pos
+#     global level_x
+#     global level_y
+#     # print(level_map[x][y - 1])
+#     # print(level_map[x][y + 1])
+#     # print(level_map[x - 1][y])
+#     # print(level_map[x][y + 1])
+#     # print()
+#     if movement == "up":
+#         if y > 0 and (level_map[y - 1][x] == "." or level_map[y - 1][x] ==
+#                       "@"):
+#             hero.move(x, y - 1)
+#     elif movement == "down":
+#         if y < level_y - 1 and (level_map[y + 1][x] == "." or
+#                                 level_map[y + 1][x] == "@"):
+#             hero.move(x, y + 1)
+#     elif movement == "left":
+#         if x > 0 and (level_map[y][x - 1] == "." or level_map[y][x - 1] ==
+#                       "@"):
+#             hero.move(x - 1, y)
+#     elif movement == "right":
+#         if x < level_x - 1 and (level_map[y][x + 1] == "." or
+#                                 level_map[y][x + 1] == "@"):
+#             hero.move(x + 1, y)
+def move(hero, key):
+    x, y = hero.pos
+    if key == 'up':
+        y = (y - 1) % 11
+        if level[y][x] == '.':
+            hero.move(x, y)
+    elif key == 'down':
+        y = (y + 1) % 11
+        if level[y][x] == '.':
+            hero.move(x, y)
+    elif key == 'right':
+        x = (x + 1) % 11
+        if level[y][x] == '.':
+            hero.move(x, y)
+    elif key == 'left':
+        x = (x - 1) % 11
+        if level[y][x] == '.':
+            hero.move(x, y)
 
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
         self.image = tile_images[tile_type]
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x, tile_height * pos_y)
+        self.rect = self.image.get_rect().move(tile_width * pos_x,
+                                               tile_height * pos_y)
+        self.pos = self.rect.x, self.rect.y
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.pos = [pos_x, pos_y]
         self.image = player_image
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x + 15, tile_height * pos_y + 5)
+
+        self.rect = self.image.get_rect().move(tile_width * pos_x + 15,
+                                               tile_height * pos_y + 5)
+        self.pos = pos_x, pos_y
 
     def move(self, x, y):
-        self.rect = self.image.get_rect().move(
-            tile_width * x + 15, tile_height * y + 5)
+        camera.dx -= tile_width * (x - self.pos[0])
+        camera.dy -= tile_height * (y - self.pos[1])
         self.pos = x, y
+        for sprite in tiles_group:
+            camera.apply(sprite)
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x = obj.pos[0] + self.dx
+        obj.rect.y = obj.pos[1] + self.dy
+        obj.rect.x %= width
+        obj.rect.y %= height
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        self.dx = 0
+        self.dy = 0
 
 
 # группы спрайтов
@@ -143,7 +188,6 @@ player_image = load_image('mario.png')
 
 tile_width = tile_height = 50
 
-
 pygame.init()
 map_ = input('Введите название уровня: ')
 size = width, height = 550, 550
@@ -151,8 +195,10 @@ screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 start_screen()
 level_map = load_level(map_)
-player, level_x, level_y = \
+player, level_x, level_y, level = \
     generate_level(load_level(map_))
+camera = Camera()
+camera.update(player)
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -168,9 +214,11 @@ while True:
             move(player, 'left')
         if key[pygame.K_RIGHT]:
             move(player, 'right')
-    all_sprites.draw(screen)
+
+    screen.fill((0, 0, 0))
     tiles_group.draw(screen)
+    all_sprites.draw(screen)
     player_group.draw(screen)
+    clock.tick(FPS)
 
     pygame.display.flip()
-    clock.tick(FPS)
