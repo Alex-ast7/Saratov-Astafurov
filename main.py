@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 from UI import Ui_MainWindow
 
 
-
 class MyWidget(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
@@ -29,13 +28,18 @@ class MyWidget(QMainWindow, Ui_MainWindow):
 
     def draw_flag(self, qp):
         try:
-            qp.setBrush(QColor(255, 255, 0))
+            r = random.randint(0, 255)
+            b = random.randint(0, 255)
+            g = random.randint(0, 255)
+            qp.setBrush(QColor(r, b, g))
             r = random.randint(10, 200)
             x = random.randint(0, 554)
             y = random.randint(0, 379)
-            self.figures.append((x, y, r))
+            self.figures.append(([r, g, b], x, y, r))
             for i in self.figures:
-                qp.drawEllipse(i[0], i[1], i[2], i[2])
+                print(i)
+                qp.setBrush(QColor(i[0][0], i[0][1], i[0][2]))
+                qp.drawEllipse(i[1], i[2], i[3], i[3])
         except Exception as e:
             print(e)
 
